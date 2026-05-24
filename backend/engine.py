@@ -34,10 +34,46 @@ def get_chart_data(ticker: str):
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
         
-    df = df.reset_index()
-    # Format Date column to string
-    df['DateStr'] = df['Date'].dt.strftime('%Y-%m-%d')
+    # Ensure index is reset into a proper column before formatting
+    if 'Date' not in df.columns:
+        df = df.reset_index()
+        
+    # Standardize column names to ensure 'Date' exists
+    if 'Date' not in df.columns:
+        date_col = None
+        for col in df.columns:
+            if str(col).lower() in ['date', 'datetime', 'index']:
+                date_col = col
+                break
+        if date_col is not None:
+            df = df.rename(columns={date_col: 'Date'})
+        else:
+            # Fallback: check if the index itself is datetime-like
+            if isinstance(df.index, pd.DatetimeIndex):
+                df['Date'] = df.index
+            else:
+                # Look for any datetime64 column
+                for col in df.columns:
+                    if pd.api.types.is_datetime64_any_dtype(df[col]):
+                        df = df.rename(columns={col: 'Date'})
+                        break
+
+    if 'Date' in df.columns:
+        # Convert to datetime if it's not already
+        if not pd.api.types.is_datetime64_any_dtype(df['Date']):
+            df['Date'] = pd.to_datetime(df['Date'])
+        # Format Date column to string
+        df['DateStr'] = df['Date'].dt.strftime('%Y-%m-%d')
+    else:
+        # If still not found, fallback to index values formatted to string
+        if isinstance(df.index, pd.DatetimeIndex):
+            df['DateStr'] = df.index.strftime('%Y-%m-%d')
+        else:
+            # Absolute fallback: convert index to string
+            df['DateStr'] = df.index.astype(str)
+            
     return df
+
 
 def run_backtest(df: pd.DataFrame, signals: pd.Series, holding_period: int = 15, stop_loss_pct: float = -0.05, take_profit_pct: float = 0.15):
     """
