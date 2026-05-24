@@ -1,0 +1,24 @@
+{
+  "ticker": "SPY",
+  "strategy_name": "Price Crosses Above EMA 20 AND RSI 14 Crosses Above 30",
+  "rules": [
+    {
+      "params": {
+        "window": 20
+      },
+      "type": "ema_cross"
+    },
+    {
+      "params": {
+        "level": 30,
+        "window": 14
+      },
+      "type": "rsi_cross"
+    }
+  ],
+  "backtest_settings": {
+    "holding_period": 15,
+    "stop_loss_pct": -0.05,
+    "take_profit_pct": 0.15
+  }
+}
