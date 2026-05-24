@@ -11,6 +11,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [ticker, setTicker] = useState('SPY');
   const [tickerInput, setTickerInput] = useState('');
+  const [error, setError] = useState(null);
 
   // --- Persistent Core References ---
   const chartContainerRef = useRef(null);
@@ -23,12 +24,18 @@ export default function App() {
   const fetchChart = async (targetTicker) => {
     try {
       setLoading(true);
+      setError(null);
       setPins([]);
       setStrategyResults(null);
       const response = await fetch(`${API_BASE}/api/chart?ticker=${targetTicker}`);
-      if (!response.ok) throw new Error('Network response data mapping failed');
+      if (!response.ok) {
+        throw new Error('Ticker not found or invalid');
+      }
 
       const data = await response.json();
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        throw new Error('Ticker not found or invalid');
+      }
 
       // Parse numeric values explicitly and force ascending chronological sort
       const formattedData = data.map(item => ({
@@ -41,8 +48,10 @@ export default function App() {
 
       setChartData(formattedData);
       setTicker(targetTicker);
-    } catch (error) {
-      console.error("Error fetching ticker coordinates:", error);
+    } catch (err) {
+      console.error("Error fetching ticker coordinates:", err);
+      setError(err.message || 'Ticker not found or invalid');
+      setChartData([]);
     } finally {
       setLoading(false);
     }
@@ -57,75 +66,100 @@ export default function App() {
   useEffect(() => {
     // Safety check: container must exist and data must have populated coordinates
     if (!chartContainerRef.current) return;
-    if (!chartData || chartData.length === 0) return;
+    if (error || !chartData || chartData.length === 0) {
+      chartContainerRef.current.innerHTML = '';
+      return;
+    }
 
-    // Clear any leftover DOM canvas nodes from React StrictMode double-mount
-    chartContainerRef.current.innerHTML = '';
+    let chart;
+    try {
+      // Clear any leftover DOM canvas nodes from React StrictMode double-mount
+      chartContainerRef.current.innerHTML = '';
 
-    // Create TradingView engine on the LOCAL variable (not on a ref)
-    const chart = createChart(chartContainerRef.current, {
-      layout: {
-        background: { type: ColorType.Solid, color: '#090a0f' },
-        textColor: '#9ca3af',
-      },
-      grid: {
-        vertLines: { color: 'rgba(38, 43, 56, 0.25)' },
-        horzLines: { color: 'rgba(38, 43, 56, 0.25)' },
-      },
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight || 480,
-      timeScale: {
-        borderColor: 'rgba(38, 43, 56, 0.5)',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(38, 43, 56, 0.5)',
-      },
-      crosshair: {
-        vertLine: { color: 'rgba(139, 92, 246, 0.4)', width: 1, style: 3 },
-        horzLine: { color: 'rgba(139, 92, 246, 0.4)', width: 1, style: 3 },
-      },
-    });
+      // Create TradingView engine on the LOCAL variable (not on a ref)
+      chart = createChart(chartContainerRef.current, {
+        layout: {
+          background: { type: ColorType.Solid, color: '#0B0C0E' },
+          textColor: '#64748B',
+          fontFamily: "'JetBrains Mono', monospace",
+        },
+        grid: {
+          vertLines: { color: 'rgba(255, 255, 255, 0.02)' },
+          horzLines: { color: 'rgba(255, 255, 255, 0.02)' },
+        },
+        width: chartContainerRef.current.clientWidth,
+        height: chartContainerRef.current.clientHeight || 480,
+        timeScale: {
+          borderColor: 'rgba(255, 255, 255, 0.05)',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: 'rgba(255, 255, 255, 0.05)',
+        },
+        crosshair: {
+          vertLine: {
+            color: 'rgba(255, 255, 255, 0.25)',
+            width: 1,
+            style: 2, // dashed
+            labelBackgroundColor: '#1E293B',
+          },
+          horzLine: {
+            color: 'rgba(255, 255, 255, 0.25)',
+            width: 1,
+            style: 2, // dashed
+            labelBackgroundColor: '#1E293B',
+          },
+        },
+      });
 
-    // Initialize Candlestick Series directly on the local chart instance (v4 API)
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#10b981',
-      downColor: '#ef4444',
-      borderVisible: false,
-      wickUpColor: '#10b981',
-      wickDownColor: '#ef4444',
-    });
+      // Initialize Candlestick Series directly on the local chart instance (v4 API)
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: '#10b981',
+        downColor: '#ef4444',
+        borderVisible: false,
+        wickUpColor: '#10b981',
+        wickDownColor: '#ef4444',
+      });
 
-    // Load structured candle array coordinates
-    candlestickSeries.setData(chartData);
+      // Load structured candle array coordinates
+      candlestickSeries.setData(chartData);
 
-    // Store references for secondary hooks
-    chartRef.current = chart;
-    candlestickSeriesRef.current = candlestickSeries;
+      // Store references for secondary hooks
+      chartRef.current = chart;
+      candlestickSeriesRef.current = candlestickSeries;
 
-    // Sync existing markers on initial paint
-    if (pins.length > 0) {
-      const markers = pins
-        .slice()
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .map(pin => ({
-          time: pin.date,
-          position: 'belowBar',
-          color: '#f43f5e',
-          shape: 'arrowUp',
-          text: `$${pin.price.toFixed(2)}`,
-          size: 1.5,
-        }));
-      candlestickSeries.setMarkers(markers);
+      // Sync existing markers on initial paint
+      if (pins.length > 0) {
+        const markers = pins
+          .slice()
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+          .map(pin => ({
+            time: pin.date,
+            position: 'belowBar',
+            color: '#D4AF37',
+            shape: 'arrowUp',
+            text: `$${pin.price.toFixed(2)}`,
+            size: 1.5,
+          }));
+        candlestickSeries.setMarkers(markers);
+      }
+    } catch (e) {
+      console.error("Error initializing lightweight-charts:", e);
+      setError("Failed to render chart canvas");
+      return;
     }
 
     // Handle viewport fluid layout adjustment on window resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-        });
+        try {
+          chartRef.current.applyOptions({
+            width: chartContainerRef.current.clientWidth,
+          });
+        } catch (e) {
+          console.error("Error resizing chart:", e);
+        }
       }
     };
     window.addEventListener('resize', handleResize);
@@ -135,13 +169,19 @@ export default function App() {
     // ============================================
     return () => {
       window.removeEventListener('resize', handleResize);
-      chart.remove();
+      if (chart) {
+        try {
+          chart.remove();
+        } catch (e) {
+          console.error("Error removing chart:", e);
+        }
+      }
       chartRef.current = null;
       candlestickSeriesRef.current = null;
       priceLinesRef.current = {};
       overlayLinesRef.current = [];
     };
-  }, [chartData]);
+  }, [chartData, error]);
 
   // --- 3. Interactive Click Mapping via subscribeClick ---
   useEffect(() => {
@@ -202,7 +242,7 @@ export default function App() {
     const markers = sortedPins.map(pin => ({
       time: pin.date,
       position: 'belowBar',
-      color: '#f43f5e',
+      color: '#D4AF37',
       shape: 'arrowUp',
       text: `$${pin.price.toFixed(2)}`,
       size: 1.5,
@@ -222,7 +262,7 @@ export default function App() {
       if (!candlestickSeriesRef.current) return;
       const line = candlestickSeriesRef.current.createPriceLine({
         price: pin.price,
-        color: 'rgba(244, 63, 94, 0.35)',
+        color: 'rgba(212, 175, 55, 0.35)',
         lineWidth: 1,
         lineStyle: 2,
         axisLabelVisible: true,
@@ -248,7 +288,7 @@ export default function App() {
         if (!chartRef.current) return;
 
         const lineSeries = chartRef.current.addLineSeries({
-          color: name.includes('Fast') ? '#06b6d4' : '#a855f7',
+          color: name.includes('Fast') ? '#D4AF37' : '#64748B',
           lineWidth: 2,
           title: name,
         });
@@ -424,13 +464,12 @@ export default function App() {
       <header className="header">
         <div className="logo-section">
           <div className="logo-text">
-            QUANT_MATRIX
-            <span className="logo-badge">v1.0</span>
+            CLKR
           </div>
         </div>
         <div className="search-section">
           <div className="ticker-input-wrapper">
-            <span className="ticker-icon">⌕</span>
+            <span className="ticker-icon"></span>
             <input
               id="ticker-search"
               type="text"
@@ -453,9 +492,9 @@ export default function App() {
               if (val) fetchChart(val);
             }}
           >
-            ⟶ Load
+            Load
           </button>
-          <span className="logo-badge" style={{ fontSize: '12px', padding: '4px 10px' }}>
+          <span className="active-ticker-badge">
             ACTIVE: {ticker}
           </span>
         </div>
@@ -465,39 +504,18 @@ export default function App() {
       <div className="dashboard-grid">
         {/* ── Left Sidebar: Controls & Pin Log ── */}
         <div className="sidebar">
-          {/* Pin Counter Panel */}
+          {/* KPI Block Container */}
           <div className="glass-panel">
-            <div className="panel-title">
-              📌 Entry Point Anchors
-            </div>
-            <div style={{ textAlign: 'center', padding: '8px 0' }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                letterSpacing: '1.5px',
-                textTransform: 'uppercase',
-                fontFamily: 'var(--font-display)',
-              }}>
-                Pins Locked
-              </span>
-              <div style={{
-                fontSize: '42px',
-                fontWeight: 900,
-                fontFamily: 'var(--font-display)',
-                color: 'var(--accent-purple)',
-                lineHeight: 1.1,
-                marginTop: '4px',
-              }}>
-                {pins.length}
-              </div>
+            <div className="kpi-card">
+              <span className="kpi-label">Pins Locked</span>
+              <div className="kpi-val">{pins.length}</div>
             </div>
           </div>
 
           {/* Pin List Scrollable Log */}
           <div className="glass-panel" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div className="panel-title">
-              🗂️ Live Anchors Log
+              Live Anchors Log
             </div>
             <div className="pin-list-container" style={{ flex: 1, maxHeight: 'none' }}>
               {pins.length === 0 ? (
@@ -516,7 +534,7 @@ export default function App() {
                       onClick={() => removePin(pin.date)}
                       title="Remove pin"
                     >
-                      ✕
+                      X
                     </button>
                   </div>
                 ))
@@ -524,20 +542,11 @@ export default function App() {
             </div>
           </div>
 
-          {/* Strategy Action Button */}
-          <button
-            className="find-strategy-btn"
-            disabled={pins.length === 0 || loading}
-            onClick={handleRunStrategy}
-          >
-            {loading ? '⟳ Processing...' : '⚡ Find My Strategy'}
-          </button>
-
           {/* Strategy Results Panel */}
           {strategyResults && strategyResults.strategies && strategyResults.strategies.length > 0 && (
             <div className="glass-panel">
               <div className="panel-title">
-                🏆 Top Strategies
+                Top Strategies
               </div>
               <div className="results-container">
                 {strategyResults.strategies.slice(0, 3).map((strat, idx) => (
@@ -584,10 +593,19 @@ export default function App() {
                 ))}
               </div>
               <button className="download-pack-btn" onClick={handleDownloadPack}>
-                📦 Download Strategy Pack
+                Download Strategy Pack
               </button>
             </div>
           )}
+
+          {/* Strategy Action Button */}
+          <button
+            className="find-strategy-btn"
+            disabled={pins.length === 0 || loading}
+            onClick={handleRunStrategy}
+          >
+            {loading ? 'Processing...' : 'Find My Strategy'}
+          </button>
         </div>
 
         {/* ── Right: Interactive Chart Workspace ── */}
@@ -595,18 +613,18 @@ export default function App() {
           {/* Chart Header Bar */}
           <div className="chart-header">
             <div className="chart-ticker-title">
-              <span style={{ color: 'var(--accent-cyan)' }}>●</span>
+              <span style={{ color: 'var(--accent-gold)' }}>Active:</span>
               {ticker}
               <span style={{
                 fontSize: '11px',
-                color: 'var(--text-muted)',
+                color: 'var(--text-secondary)',
                 fontWeight: 400,
               }}>
                 · {chartData.length} bars
               </span>
             </div>
             <div className="chart-instructions">
-              🖱️ Click candles to pin entry points
+              Click candles to pin entry points
             </div>
           </div>
 
@@ -618,18 +636,28 @@ export default function App() {
                 <span className="loading-text">Synchronizing market data...</span>
               </div>
             )}
-            <div
-              ref={chartContainerRef}
-              className="chart-instance"
-            />
+            {error ? (
+              <div className="chart-error-fallback">
+                <div className="error-message-box">
+                  <span className="error-icon">!</span>
+                  <span className="error-title">Ticker not found or invalid</span>
+                  <span className="error-desc">Please verify the search query and try again.</span>
+                </div>
+              </div>
+            ) : (
+              <div
+                ref={chartContainerRef}
+                className="chart-instance"
+              />
+            )}
           </div>
 
           {/* Bottom Trade Log Panel (visible when strategy results exist) */}
           {strategyResults && strategyResults.strategies && strategyResults.strategies[0]?.backtest?.trades && (
             <div className="bottom-trade-log-panel">
               <div className="trade-log-header">
-                <span>📊 Backtest Trade Log — {strategyResults.strategies[0].name}</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                <span>Backtest Trade Log — {strategyResults.strategies[0].name}</span>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
                   {strategyResults.strategies[0].backtest.trades.length} trades
                 </span>
               </div>
