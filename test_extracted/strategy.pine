@@ -14,16 +14,22 @@ rsi_1 = ta.rsi(close, 14)
 buyCondition = ta.crossover(close, ema_0) and ta.crossover(rsi_1, 30)
 
 // Trade State Machine (Position Tracker)
+inPosition = strategy.position_size > 0
+
 var int entryBar = na
 var float entryPrice = na
 
-inPosition = not na(entryPrice)
+if inPosition
+    if na(entryBar)
+        entryBar := bar_index
+        entryPrice := strategy.position_avg_price
+else
+    entryBar := na
+    entryPrice := na
 
 if not inPosition
     if buyCondition
         strategy.entry("Buy", strategy.long)
-        entryBar := bar_index
-        entryPrice := close
 else
     daysHeld = bar_index - entryBar
     priceChange = (close - entryPrice) / entryPrice
@@ -34,5 +40,3 @@ else
     
     if stopTrigger or tpTrigger or holdTrigger
         strategy.close("Buy", comment = stopTrigger ? "Stop Loss" : tpTrigger ? "Take Profit" : "Holding Period")
-        entryPrice := na
-        entryBar := na

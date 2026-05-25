@@ -421,16 +421,22 @@ takeProfitPct = input.float(15.0, title="Take Profit %") / 100.0
 buyCondition = {cond_str}
 
 // Trade State Machine (Position Tracker)
+inPosition = strategy.position_size > 0
+
 var int entryBar = na
 var float entryPrice = na
 
-inPosition = not na(entryPrice)
+if inPosition
+    if na(entryBar)
+        entryBar := bar_index
+        entryPrice := strategy.position_avg_price
+else
+    entryBar := na
+    entryPrice := na
 
 if not inPosition
     if buyCondition
         strategy.entry("Buy", strategy.long)
-        entryBar := bar_index
-        entryPrice := close
         alert("BUY " + syminfo.ticker + " at " + str.tostring(close), alert.freq_once_per_bar)
 else
     daysHeld = bar_index - entryBar
@@ -443,8 +449,6 @@ else
     if stopTrigger or tpTrigger or holdTrigger
         exitReason = stopTrigger ? "Stop Loss" : tpTrigger ? "Take Profit" : "Holding Period"
         strategy.close("Buy", comment = exitReason)
-        entryPrice := na
-        entryBar := na
         alert("SELL " + syminfo.ticker + " at " + str.tostring(close) + " Reason: " + exitReason, alert.freq_once_per_bar)
 """
     return template
