@@ -7,11 +7,10 @@ stopLossPct = input.float(5.0, title="Stop Loss %") / 100.0
 takeProfitPct = input.float(15.0, title="Take Profit %") / 100.0
 
 // Technical Indicator Declarations
-ema_0 = ta.ema(close, 20)
-rsi_1 = ta.rsi(close, 14)
+smaValue = ta.sma(close, 20)
 
 // Buy Condition
-buyCondition = ta.crossover(close, ema_0) and ta.crossover(rsi_1, 30)
+buyCondition = ta.crossover(close, smaValue)
 
 // Trade State Machine (Position Tracker)
 inPosition = strategy.position_size > 0
