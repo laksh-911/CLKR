@@ -4,6 +4,13 @@ import yfinance as yf
 import json
 import io
 import zipfile
+import os
+
+try:
+    from google import genai
+    client = genai.Client()
+except Exception as e:
+    client = None
 
 def calculate_rsi(series: pd.Series, period: int = 14) -> pd.Series:
     delta = series.diff()
@@ -637,3 +644,52 @@ def export_strategy_pack(ticker: str, strategy_config: dict) -> io.BytesIO:
         
     zip_buffer.seek(0)
     return zip_buffer
+
+
+def generate_strategy_brief(strategy_data: dict, ticker: str) -> str:
+    """
+    Calls the Google Gemini API using the gemini-2.5-flash model to generate a crisp 2-bullet point
+    summary of the strategy's performance and core theory.
+    """
+    global client
+    if client is None:
+        try:
+            from google import genai
+            client = genai.Client()
+        except Exception:
+            return ""
+
+    try:
+        # Extract rules descriptions
+        rules_desc = ", ".join([r.get('name', '') for r in strategy_data.get('rules', [])])
+        
+        # Build raw backtest text
+        prompt = (
+            f"Ticker: {ticker}\n"
+            f"Strategy Name: {strategy_data.get('name', 'Unknown')}\n"
+            f"Rules: {rules_desc}\n"
+            f"Win Rate: {strategy_data.get('win_rate', 0.0) * 100:.1f}%\n"
+            f"Profit Factor: {strategy_data.get('profit_factor', 0.0):.2f}\n"
+            f"Total Return: {strategy_data.get('total_return', 0.0) * 100:.2f}%\n"
+            f"Total Trades: {strategy_data.get('total_trades', 0)}"
+        )
+        
+        system_instruction = (
+            "You are a elite quantitative trading terminal analyst. Review the provided backtest data "
+            "for the given ticker. Generate a 2-bullet-point summary in plain English. "
+            "Bullet 1: 'The Theory' (how this parameter combo works). "
+            "Bullet 2: 'Performance Breakdown' (why it won or lost money based on its profit factor and win rate). "
+            "Keep it under 50 words total. No jargon, no fluff, no markdown styling."
+        )
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config={
+                'system_instruction': system_instruction
+            }
+        )
+        return response.text.strip() if response.text else ""
+    except Exception as e:
+        print(f"Error calling Gemini API: {e}")
+        return ""

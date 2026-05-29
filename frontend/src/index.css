@@ -945,3 +945,97 @@ body {
 .tutorial-btn-launch:active {
   transform: translateY(0);
 }
+
+/* AI Insight Accordion UI Styling */
+.ai-insight-accordion {
+  margin-top: 12px;
+  background: #13151A; /* Charcoal obsidian card background */
+  border: 1px solid rgba(255, 255, 255, 0.05); /* 1px transparent white borders */
+  border-radius: 6px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ai-insight-accordion.open {
+  border-color: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ai-insight-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.01);
+  transition: background-color 0.2s ease;
+}
+
+.ai-insight-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ai-insight-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #D4AF37; /* Champagne gold accent text */
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+
+.ai-insight-chevron {
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.ai-insight-content {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ai-insight-accordion.open .ai-insight-content {
+  max-height: 250px;
+  opacity: 1;
+  padding: 10px 12px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.ai-insight-text {
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Skeleton/Loading State Animation */
+.ai-insight-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.ai-insight-pulse-text {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-secondary);
+  display: inline-block;
+  animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ai-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.95;
+    color: #D4AF37;
+  }
+}
+

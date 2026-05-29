@@ -40,6 +40,7 @@ export default function App() {
   const [ticker, setTicker] = useState('SPY');
   const [tickerInput, setTickerInput] = useState('');
   const [error, setError] = useState(null);
+  const [expandedStrategyIdx, setExpandedStrategyIdx] = useState(0);
 
   // --- Onboarding Tutorial State ---
   const [showTutorial, setShowTutorial] = useState(false);
@@ -520,6 +521,7 @@ export default function App() {
         strategies: mappedStrategies,
         indicators: indicators
       });
+      setExpandedStrategyIdx(0);
 
       // 2. Fetch export results for actual strategy pack ZIP file download (Preserving core logic exactly)
       const response = await fetch(`${API_BASE}/api/export`, {
@@ -783,7 +785,11 @@ export default function App() {
               </div>
               <div className="results-container">
                 {strategyResults.strategies.slice(0, 3).map((strat, idx) => (
-                  <div key={idx} className={`strategy-card ${idx === 0 ? 'selected' : ''}`}>
+                  <div
+                    key={idx}
+                    className={`strategy-card ${idx === 0 ? 'selected' : ''}`}
+                    onClick={() => setExpandedStrategyIdx(expandedStrategyIdx === idx ? -1 : idx)}
+                  >
                     <div className="strategy-rank">
                       <span className={`rank-badge rank-${idx + 1}`}>
                         #{idx + 1}
@@ -820,6 +826,31 @@ export default function App() {
                         }}>
                           {((strat.backtest?.avg_return || 0) * 100).toFixed(2)}%
                         </span>
+                      </div>
+                    </div>
+
+                    {/* AI Insight Accordion */}
+                    <div
+                      className={`ai-insight-accordion ${expandedStrategyIdx === idx ? 'open' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedStrategyIdx(expandedStrategyIdx === idx ? -1 : idx);
+                      }}
+                    >
+                      <div className="ai-insight-header">
+                        <span className="ai-insight-label">✦ AI Insight</span>
+                        <span className="ai-insight-chevron">
+                          {expandedStrategyIdx === idx ? '▲' : '▼'}
+                        </span>
+                      </div>
+                      <div className="ai-insight-content">
+                        {strat.ai_brief ? (
+                          <p className="ai-insight-text">{strat.ai_brief}</p>
+                        ) : (
+                          <div className="ai-insight-loading">
+                            <span className="ai-insight-pulse-text">AI Analysing...</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

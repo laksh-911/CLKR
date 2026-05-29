@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 import pandas as pd
 
-from engine import get_chart_data, sweep_strategies, export_strategy_pack
+from engine import get_chart_data, sweep_strategies, export_strategy_pack, generate_strategy_brief
 
 app = FastAPI(title="CLKR Pattern Matching Heuristic Engine API")
 
@@ -94,6 +94,8 @@ def analyze_pins(payload: AnalyzeRequest):
         
     try:
         top_strategies = sweep_strategies(df, pins)
+        for strat in top_strategies:
+            strat['ai_brief'] = generate_strategy_brief(strat, ticker)
         return {
             "ticker": ticker,
             "strategies": top_strategies
