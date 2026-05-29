@@ -709,3 +709,239 @@ body {
   padding: 20px;
   font-size: 12px;
 }
+
+/* ============================================
+ * Onboarding Tutorial — Premium Capsule System
+ * ============================================ */
+
+/* Full-screen overlay container */
+.tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: auto;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.tutorial-overlay-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Animated spotlight ring around the target element */
+.tutorial-spotlight-ring {
+  position: fixed;
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  border-radius: 10px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow:
+    0 0 20px rgba(212, 175, 55, 0.15),
+    0 0 40px rgba(212, 175, 55, 0.08),
+    inset 0 0 20px rgba(212, 175, 55, 0.05);
+  animation: spotlight-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes spotlight-pulse {
+  0%, 100% {
+    border-color: rgba(212, 175, 55, 0.5);
+    box-shadow:
+      0 0 20px rgba(212, 175, 55, 0.15),
+      0 0 40px rgba(212, 175, 55, 0.08),
+      inset 0 0 20px rgba(212, 175, 55, 0.05);
+  }
+  50% {
+    border-color: rgba(212, 175, 55, 0.8);
+    box-shadow:
+      0 0 30px rgba(212, 175, 55, 0.25),
+      0 0 60px rgba(212, 175, 55, 0.12),
+      inset 0 0 30px rgba(212, 175, 55, 0.08);
+  }
+}
+
+/* Dark Capsule Tooltip */
+.tutorial-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: 400px;
+  background: #13151A;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.65),
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 1px rgba(255, 255, 255, 0.05);
+  pointer-events: auto;
+  animation: tooltip-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center top;
+}
+
+@keyframes tooltip-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* Step indicator pips row */
+.tutorial-step-pips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.tutorial-pip {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-pip.active {
+  background: #D4AF37;
+  width: 32px;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+.tutorial-pip.completed {
+  background: rgba(212, 175, 55, 0.35);
+}
+
+.tutorial-step-counter {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+/* Tooltip header block */
+.tutorial-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.tutorial-tooltip-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  font-size: 18px;
+  flex-shrink: 0;
+  color: #D4AF37;
+}
+
+.tutorial-tooltip-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.tutorial-tooltip-subtitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #D4AF37;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 2px;
+}
+
+/* Body text */
+.tutorial-tooltip-body {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Navigation action buttons */
+.tutorial-tooltip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tutorial-btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.5px;
+  border: none;
+  outline: none;
+}
+
+.tutorial-btn-skip {
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 10px 14px;
+}
+
+.tutorial-btn-skip:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tutorial-btn-next {
+  background: rgba(212, 175, 55, 0.12);
+  color: #D4AF37;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+}
+
+.tutorial-btn-next:hover {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: rgba(212, 175, 55, 0.45);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.15);
+  transform: translateY(-1px);
+}
+
+.tutorial-btn-launch {
+  background: #D4AF37;
+  color: #0B0C0E;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  font-size: 12px;
+  padding: 11px 24px;
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
+}
+
+.tutorial-btn-launch:hover {
+  background: #E0C04A;
+  box-shadow: 0 6px 28px rgba(212, 175, 55, 0.45);
+  transform: translateY(-1px);
+}
+
+.tutorial-btn-launch:active {
+  transform: translateY(0);
+}

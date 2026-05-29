@@ -1,7 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createChart, ColorType } from 'lightweight-charts';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
+// ─── Onboarding Tutorial Step Definitions ───
+const TUTORIAL_STEPS = [
+  {
+    id: 'command-center',
+    title: 'The Command Center',
+    subtitle: 'Header Bar',
+    text: 'Welcome to CLKR. Type any asset ticker (e.g., \u2018SPY\u2019 or \u2018AAPL\u2019) here to instantly fetch real-time market data.',
+    targetSelector: '.ticker-input-wrapper',
+    icon: '⌘',
+  },
+  {
+    id: 'technical-intelligence',
+    title: 'Technical Intelligence',
+    subtitle: 'Main Canvas',
+    text: 'Analyze algorithmic trends. This canvas maps live price action against custom indicator sweeps, including RSI, Moving Averages, and MACD crossovers.',
+    targetSelector: '.chart-viewport-wrapper',
+    icon: '◈',
+  },
+  {
+    id: 'strategy-engine',
+    title: 'Strategy Engine',
+    subtitle: 'Sidebar Bottom',
+    text: 'Run Backtests. Once your ticker is loaded, click here to execute out-of-sample historical validation and find the optimal parameter rules.',
+    targetSelector: '.find-strategy-btn',
+    icon: '⚡',
+  },
+];
 
 export default function App() {
   // --- State Management ---
@@ -12,6 +40,12 @@ export default function App() {
   const [ticker, setTicker] = useState('SPY');
   const [tickerInput, setTickerInput] = useState('');
   const [error, setError] = useState(null);
+
+  // --- Onboarding Tutorial State ---
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [tooltipPos, setTooltipPos] = useState({ top: 0, left: 0, spotlightRect: null });
+  const [tutorialReady, setTutorialReady] = useState(false);
 
   // --- Persistent Core References ---
   const chartContainerRef = useRef(null);
@@ -61,6 +95,102 @@ export default function App() {
   useEffect(() => {
     fetchChart('SPY');
   }, []);
+
+  // ─── Onboarding Tutorial Lifecycle ───
+  const positionTooltip = useCallback(() => {
+    if (!showTutorial) return;
+    const step = TUTORIAL_STEPS[currentStep];
+    if (!step) return;
+
+    const targetEl = document.querySelector(step.targetSelector);
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+    const tooltipWidth = 400;
+    const tooltipHeight = 240;
+    const gap = 16;
+
+    let top, left;
+
+    // Position logic: place tooltip where there is the most viewport space
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const spaceRight = window.innerWidth - rect.right;
+    const spaceLeft = rect.left;
+
+    if (spaceBelow >= tooltipHeight + gap) {
+      // Below target
+      top = rect.bottom + gap;
+      left = rect.left + rect.width / 2 - tooltipWidth / 2;
+    } else if (spaceAbove >= tooltipHeight + gap) {
+      // Above target
+      top = rect.top - tooltipHeight - gap;
+      left = rect.left + rect.width / 2 - tooltipWidth / 2;
+    } else if (spaceRight >= tooltipWidth + gap) {
+      // Right of target
+      top = rect.top + rect.height / 2 - tooltipHeight / 2;
+      left = rect.right + gap;
+    } else {
+      // Left of target (fallback)
+      top = rect.top + rect.height / 2 - tooltipHeight / 2;
+      left = rect.left - tooltipWidth - gap;
+    }
+
+    // Clamp to viewport bounds
+    top = Math.max(12, Math.min(top, window.innerHeight - tooltipHeight - 12));
+    left = Math.max(12, Math.min(left, window.innerWidth - tooltipWidth - 12));
+
+    setTooltipPos({
+      top,
+      left,
+      spotlightRect: {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      },
+    });
+  }, [showTutorial, currentStep]);
+
+  // Check localStorage on mount and trigger tutorial after a brief delay
+  useEffect(() => {
+    const hasCompleted = localStorage.getItem('clkr_onboarding_complete');
+    if (!hasCompleted) {
+      // Delay to let the DOM paint fully before measuring positions
+      const timer = setTimeout(() => {
+        setShowTutorial(true);
+        setCurrentStep(0);
+        setTutorialReady(true);
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  // Reposition tooltip whenever step changes or window resizes
+  useEffect(() => {
+    if (!showTutorial) return;
+
+    // Small delay for DOM to settle
+    const raf = requestAnimationFrame(() => positionTooltip());
+    window.addEventListener('resize', positionTooltip);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', positionTooltip);
+    };
+  }, [showTutorial, currentStep, positionTooltip]);
+
+  const handleTutorialNext = () => {
+    if (currentStep < TUTORIAL_STEPS.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleTutorialFinish = () => {
+    setShowTutorial(false);
+    setTutorialReady(false);
+    localStorage.setItem('clkr_onboarding_complete', 'true');
+  };
 
   // --- 2. Initialize and Manage Lightweight Charts ---
   useEffect(() => {
@@ -458,8 +588,111 @@ export default function App() {
   // =========================================
   // JSX RETURN — Premium Dark Mode Dashboard
   // =========================================
+  // Current tutorial step data (safe access)
+  const activeStep = TUTORIAL_STEPS[currentStep] || null;
+
   return (
     <div className="app-container">
+      {/* ─── Onboarding Tutorial Overlay ─── */}
+      {showTutorial && tutorialReady && activeStep && tooltipPos.spotlightRect && (
+        <>
+          {/* Backdrop overlay with spotlight cutout */}
+          <div className="tutorial-overlay" onClick={(e) => e.stopPropagation()}>
+            {/* SVG mask to cut out the spotlight area */}
+            <svg className="tutorial-overlay-svg" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <mask id="tutorial-spotlight-mask">
+                  <rect x="0" y="0" width="100%" height="100%" fill="white" />
+                  <rect
+                    x={tooltipPos.spotlightRect.left - 6}
+                    y={tooltipPos.spotlightRect.top - 6}
+                    width={tooltipPos.spotlightRect.width + 12}
+                    height={tooltipPos.spotlightRect.height + 12}
+                    rx="10"
+                    ry="10"
+                    fill="black"
+                  />
+                </mask>
+              </defs>
+              <rect
+                x="0" y="0" width="100%" height="100%"
+                fill="rgba(0, 0, 0, 0.72)"
+                mask="url(#tutorial-spotlight-mask)"
+              />
+            </svg>
+
+            {/* Spotlight border glow ring */}
+            <div
+              className="tutorial-spotlight-ring"
+              style={{
+                top: tooltipPos.spotlightRect.top - 6,
+                left: tooltipPos.spotlightRect.left - 6,
+                width: tooltipPos.spotlightRect.width + 12,
+                height: tooltipPos.spotlightRect.height + 12,
+              }}
+            />
+          </div>
+
+          {/* Tooltip Capsule */}
+          <div
+            className="tutorial-tooltip"
+            style={{
+              top: tooltipPos.top,
+              left: tooltipPos.left,
+            }}
+          >
+            {/* Step indicator pips */}
+            <div className="tutorial-step-pips">
+              {TUTORIAL_STEPS.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`tutorial-pip ${idx === currentStep ? 'active' : ''} ${idx < currentStep ? 'completed' : ''}`}
+                />
+              ))}
+              <span className="tutorial-step-counter">
+                {currentStep + 1} / {TUTORIAL_STEPS.length}
+              </span>
+            </div>
+
+            {/* Header */}
+            <div className="tutorial-tooltip-header">
+              <span className="tutorial-tooltip-icon">{activeStep.icon}</span>
+              <div>
+                <div className="tutorial-tooltip-title">{activeStep.title}</div>
+                <div className="tutorial-tooltip-subtitle">{activeStep.subtitle}</div>
+              </div>
+            </div>
+
+            {/* Body text */}
+            <p className="tutorial-tooltip-body">{activeStep.text}</p>
+
+            {/* Navigation controls */}
+            <div className="tutorial-tooltip-actions">
+              <button
+                className="tutorial-btn tutorial-btn-skip"
+                onClick={handleTutorialFinish}
+              >
+                Skip
+              </button>
+              {currentStep < TUTORIAL_STEPS.length - 1 ? (
+                <button
+                  className="tutorial-btn tutorial-btn-next"
+                  onClick={handleTutorialNext}
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  className="tutorial-btn tutorial-btn-launch"
+                  onClick={handleTutorialFinish}
+                >
+                  ⚡ Launch Terminal
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
       {/* ─── Top Navigation Header ─── */}
       <header className="header">
         <div className="logo-section">
